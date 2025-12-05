@@ -1,13 +1,12 @@
 """
 blockchain_chat.py
-Version ultime pour ton projet :
+Blockchain P2P avec chat décentralisé
 - Découverte automatique via multicast
 - Réseau TCP P2P
 - Blockchain complète : blocs, merkle root, previous hash, validation
-- PoET automatique (pas de minage forcé)
-- Affichage du mineur du bloc (vous ou un pair)
-- Anti-boucle messages et blocs
-- Notifications uniquement pour les messages chat
+- PoET automatique (Proof of Elapsed Time)
+- Signatures Ed25519 pour authentification
+- Consensus sur les pseudos (premier arrivé dans la blockchain)
 - Interface terminale
 """
 
@@ -20,7 +19,7 @@ import hashlib
 import random
 import uuid
 import os
-from typing import List
+from typing import List, Optional
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives import serialization
 
@@ -52,7 +51,7 @@ class Transaction:
         self.payload = payload
         self.timestamp = int(time.time())
         self.signature = None
-        self.pubkey = None  # clé publique incluse dans la transaction
+        self.pubkey = None
 
     def sign(self, private_key: Ed25519PrivateKey):
         self.pubkey = private_key.public_key().public_bytes(
@@ -70,7 +69,6 @@ class Transaction:
             return True
         except Exception:
             return False
-
 
 
 # ======================
@@ -130,7 +128,8 @@ class Blockchain:
         self.mempool: List[Transaction] = []
 
     def add_transaction(self, tx: Transaction):
-        if tx not in self.mempool:
+        # Éviter les doublons dans la mempool
+        if not any(t.txid == tx.txid for t in self.mempool):
             self.mempool.append(tx)
 
     def create_block(self, miner_id: str):
@@ -139,13 +138,19 @@ class Blockchain:
 
         idx = len(self.chain)
         prev = self.chain[-1].current_hash if self.chain else "0"*64
-        block = Block(idx, self.mempool.copy(), prev, miner_id)
+        
+        # Copier les transactions avant de vider la mempool
+        txs = self.mempool.copy()
+        block = Block(idx, txs, prev, miner_id)
 
+        # Vider la mempool APRÈS création du bloc
         self.mempool.clear()
-        self.chain.append(block)
         return block
 
     def validate_chain(self, chain: List[Block]):
+        if not chain:
+            return True
+            
         for i, blk in enumerate(chain):
             if not blk.validate():
                 return False
@@ -156,8 +161,21 @@ class Blockchain:
     def replace_if_longer(self, chain: List[Block]):
         if len(chain) > len(self.chain) and self.validate_chain(chain):
             self.chain = chain
+            self.mempool.clear()  # Reset mempool lors d'un remplacement
             return True
         return False
+
+    def get_registered_users(self) -> dict:
+        """Reconstruit la liste des utilisateurs depuis la blockchain"""
+        users = {}
+        for block in self.chain:
+            for tx in block.transactions:
+                if tx.tx_type == "register":
+                    pseudo = tx.payload["pseudo"]
+                    # Premier arrivé = gagnant (on ne l'écrase pas)
+                    if pseudo not in users:
+                        users[pseudo] = tx.pubkey
+        return users
 
 
 # ======================
@@ -165,7 +183,7 @@ class Blockchain:
 # ======================
 class PoETTimer:
     def __init__(self):
-        self.wait = random.uniform(2, 6)
+        self.wait = random.uniform(3, 8)
 
     def begin_wait(self):
         time.sleep(self.wait)
@@ -182,16 +200,17 @@ class Node:
 
         self.peers = set()
         self.blockchain = Blockchain()
-        self.users = {}  # pseudo -> key
 
         self.seen_tx = set()
         self.seen_blocks = set()
 
         self.lock = threading.RLock()
-        self.private_keys = {}
+        self.private_keys = {}  # pseudo -> PrivateKey (seulement pour les pseudos locaux)
+        self.mining = False
+        self.synced = False  # Flag de synchronisation initiale
+        
         self.load_chain()
 
-    # -------------------
     @staticmethod
     def get_local_ip():
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -200,14 +219,20 @@ class Node:
             ip = s.getsockname()[0]
         except:
             ip = "127.0.0.1"
-        s.close()
+        finally:
+            s.close()
         return ip
+
+    def get_users(self) -> dict:
+        """Retourne les utilisateurs enregistrés dans la blockchain"""
+        return self.blockchain.get_registered_users()
 
     # ======================
     # TCP SERVER
     # ======================
     def tcp_server(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((self.host, self.tcp_port))
         s.listen(10)
         print(f"[TCP] Serveur actif sur {self.node_id}")
@@ -218,25 +243,41 @@ class Node:
 
     def handle_client(self, client):
         try:
+            # Recevoir la taille d'abord
             data = b''
-            while True:
-                p = client.recv(65536)
-                if not p:
-                    break
-                data += p
-            if not data:
-                return
+            while len(data) < 4:
+                chunk = client.recv(4 - len(data))
+                if not chunk:
+                    return
+                data += chunk
+            
+            size = struct.unpack('!I', data)[0]
+            
+            # Recevoir les données complètes
+            data = b''
+            while len(data) < size:
+                chunk = client.recv(min(65536, size - len(data)))
+                if not chunk:
+                    return
+                data += chunk
+            
             obj = pickle.loads(data)
             with self.lock:
                 self.receive_object(obj)
+        except Exception as e:
+            pass
         finally:
             client.close()
 
     def send_tcp(self, peer, obj):
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(5)
             s.connect(peer)
-            s.sendall(pickle.dumps(obj))
+            
+            data = pickle.dumps(obj)
+            size = struct.pack('!I', len(data))
+            s.sendall(size + data)
             s.close()
         except:
             pass
@@ -252,6 +293,11 @@ class Node:
         mreq = struct.pack("4sl", socket.inet_aton(MULTICAST_IP), socket.INADDR_ANY)
         s.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
+        # Timer pour marquer comme synced si aucun pair après 5 secondes
+        sync_timer = threading.Timer(5.0, self.mark_as_synced)
+        sync_timer.daemon = True
+        sync_timer.start()
+
         while True:
             try:
                 data, addr = s.recvfrom(1024)
@@ -260,7 +306,9 @@ class Node:
                     ip, port = msg.split(":")
                     peer = (ip, int(port))
                     if peer != (self.host, self.tcp_port) and peer not in self.peers:
-                        self.peers.add(peer)
+                        with self.lock:
+                            self.peers.add(peer)
+                        print(f"\n[PEER] Nouveau pair découvert: {ip}:{port}\n>> ", end="", flush=True)
                         self.send_tcp(peer, ("CHAIN_REQUEST", (self.host, self.tcp_port)))
             except:
                 pass
@@ -273,7 +321,10 @@ class Node:
         msg = f"{self.host}:{self.tcp_port}".encode()
 
         while True:
-            s.sendto(msg, (MULTICAST_IP, MULTICAST_PORT))
+            try:
+                s.sendto(msg, (MULTICAST_IP, MULTICAST_PORT))
+            except:
+                pass
             time.sleep(ANNOUNCE_INTERVAL)
 
     # ======================
@@ -302,34 +353,39 @@ class Node:
             return
 
         if not tx.verify_signature():
-            print("❌ Transaction rejetée : signature invalide.")
+            print("\n❌ Transaction rejetée : signature invalide.\n>> ", end="", flush=True)
             return
 
         self.seen_tx.add(tx.txid)
 
         if tx.tx_type == "register":
             pseudo = tx.payload["pseudo"]
+            users = self.get_users()
 
-            if pseudo in self.users:
-                return  # impossible d’écraser une identité
+            # Vérifier si le pseudo est DÉJÀ dans la blockchain
+            if pseudo in users:
+                print(f"\n⚠️  Pseudo '{pseudo}' déjà pris (rejeté)\n>> ", end="", flush=True)
+                return
 
-            self.users[pseudo] = tx.pubkey
+            # Ajouter à la mempool
             self.blockchain.add_transaction(tx)
             self.broadcast(tx)
+            print(f"\n[REGISTER] Transaction d'enregistrement pour '{pseudo}' ajoutée à la mempool\n>> ", end="", flush=True)
             return
 
         if tx.tx_type == "chat":
             sender = tx.payload["sender"]
+            users = self.get_users()
 
-            if sender not in self.users:
-                print("❌ Message rejeté : l'utilisateur n'existe pas.")
+            if sender not in users:
+                print(f"\n❌ Message rejeté : l'utilisateur '{sender}' n'existe pas.\n>> ", end="", flush=True)
                 return
 
-            if tx.pubkey != self.users[sender]:
-                print("❌ Message rejeté : tentative d’usurpation détectée.")
+            if tx.pubkey != users[sender]:
+                print("\n❌ Message rejeté : tentative d'usurpation détectée.\n>> ", end="", flush=True)
                 return
 
-            print(f"\n🔔 Nouveau message de {sender}: {tx.payload['content']}\n>> ", end="")
+            print(f"\n💬 {sender}: {tx.payload['content']}\n>> ", end="", flush=True)
             self.blockchain.add_transaction(tx)
             self.broadcast(tx)
 
@@ -341,22 +397,58 @@ class Node:
             return
 
         if not block.validate():
+            print("\n❌ Bloc invalide reçu\n>> ", end="", flush=True)
             return
 
-        if block.index == len(self.blockchain.chain):
-            self.seen_blocks.add(block.current_hash)
-            self.blockchain.chain.append(block)
+        # Vérifier que c'est le bloc suivant attendu
+        if block.index != len(self.blockchain.chain):
+            return
 
-            print(f"\n⛏️ Bloc reçu miné par {block.miner_id} : idx={block.index}, txs={len(block.transactions)}\n>> ", end="")
+        # VALIDATION DES TRANSACTIONS DU BLOC
+        users_before_block = self.get_users()
+        valid_txs = []
+        
+        for tx in block.transactions:
+            if tx.tx_type == "register":
+                pseudo = tx.payload["pseudo"]
+                # On accepte seulement si le pseudo n'existe pas encore
+                if pseudo not in users_before_block and pseudo not in [vtx.payload.get("pseudo") for vtx in valid_txs if vtx.tx_type == "register"]:
+                    valid_txs.append(tx)
+                    
+            elif tx.tx_type == "chat":
+                sender = tx.payload["sender"]
+                # Vérifier que l'utilisateur existe et que la signature correspond
+                if sender in users_before_block and tx.pubkey == users_before_block[sender]:
+                    valid_txs.append(tx)
 
-            self.broadcast(block)
-            self.save_chain()
+        # Si toutes les transactions sont invalides, rejeter le bloc
+        if not valid_txs and block.transactions:
+            print("\n❌ Bloc rejeté : aucune transaction valide\n>> ", end="", flush=True)
+            return
+
+        self.seen_blocks.add(block.current_hash)
+        self.blockchain.chain.append(block)
+        
+        # Retirer les transactions du bloc de notre mempool
+        block_txids = {tx.txid for tx in block.transactions}
+        self.blockchain.mempool = [tx for tx in self.blockchain.mempool if tx.txid not in block_txids]
+
+        miner = "VOUS" if block.miner_id == self.node_id else block.miner_id
+        print(f"\n⛏️  Bloc #{block.index} miné par {miner} ({len(block.transactions)} txs)\n>> ", end="", flush=True)
+
+        self.broadcast(block)
+        self.save_chain()
 
     def handle_chain_response(self, chain):
         if self.blockchain.replace_if_longer(chain):
             self.seen_blocks = {b.current_hash for b in chain}
-            print(f"\n[SYNC] Blockchain mise à jour ({len(chain)} blocs)\n>> ", end="")
+            print(f"\n[SYNC] Blockchain mise à jour ({len(chain)} blocs)\n>> ", end="", flush=True)
             self.save_chain()
+        
+        # Marquer comme synchronisé après avoir reçu une réponse
+        if not self.synced:
+            self.synced = True
+            print(f"\n✅ Synchronisation terminée\n>> ", end="", flush=True)
 
     # ======================
     # DIFFUSION
@@ -372,20 +464,32 @@ class Node:
         while True:
             time.sleep(1)
 
-            if not self.blockchain.mempool:
-                continue
+            with self.lock:
+                if not self.blockchain.mempool or self.mining:
+                    continue
+                
+                self.mining = True
 
+            # PoET en dehors du lock
             poet = PoETTimer()
             poet.begin_wait()
 
             with self.lock:
+                # Vérifier à nouveau si la mempool n'est pas vide
+                if not self.blockchain.mempool:
+                    self.mining = False
+                    continue
+
                 block = self.blockchain.create_block(self.node_id)
                 if block:
                     self.seen_blocks.add(block.current_hash)
+                    self.blockchain.chain.append(block)
 
-                    print(f"\n⛏️ Bloc miné par VOUS ({self.node_id}) : idx={block.index}, txs={len(block.transactions)}\n>> ", end="")
+                    print(f"\n⛏️  Vous avez miné le bloc #{block.index} ({len(block.transactions)} txs)\n>> ", end="", flush=True)
                     self.broadcast(block)
                     self.save_chain()
+                
+                self.mining = False
 
     # ======================
     # PERSISTENCE
@@ -394,8 +498,8 @@ class Node:
         try:
             with open(CHAIN_FILE, "wb") as f:
                 pickle.dump(self.blockchain.chain, f)
-        except:
-            pass
+        except Exception as e:
+            print(f"Erreur sauvegarde: {e}")
 
     def load_chain(self):
         if os.path.exists(CHAIN_FILE):
@@ -406,51 +510,84 @@ class Node:
                     self.blockchain.chain = chain
                     self.seen_blocks = {b.current_hash for b in chain}
                     print(f"[LOAD] Blockchain chargée ({len(chain)} blocs)")
-            except:
-                pass
+            except Exception as e:
+                print(f"Erreur chargement: {e}")
+
+    def mark_as_synced(self):
+        """Marque le nœud comme synchronisé après un délai"""
+        with self.lock:
+            if not self.synced:
+                self.synced = True
+                if not self.peers:
+                    print(f"\n[INFO] Aucun pair trouvé - Mode solo activé\n>> ", end="", flush=True)
+                else:
+                    print(f"\n✅ Synchronisation terminée\n>> ", end="", flush=True)
 
     # ======================
     # ACTIONS USER
     # ======================
     def register_user(self, pseudo):
-        if pseudo in self.users:
-            print("Ce pseudo est déjà enregistré.")
+        # Vérifier si on est synchronisé
+        if not self.synced:
+            print("⏳ Synchronisation en cours... Veuillez patienter.")
             return
 
-        private_key = Ed25519PrivateKey.generate()
-        public_key = private_key.public_key().public_bytes(
-            serialization.Encoding.Raw,
-            serialization.PublicFormat.Raw
-        )
+        with self.lock:
+            users = self.get_users()
+            
+            # Vérifier dans la blockchain
+            if pseudo in users:
+                print("❌ Ce pseudo est déjà enregistré dans la blockchain.")
+                return
+            
+            # Vérifier dans la mempool (en attente de minage)
+            for tx in self.blockchain.mempool:
+                if tx.tx_type == "register" and tx.payload.get("pseudo") == pseudo:
+                    print("⚠️  Ce pseudo est déjà en attente de validation (mempool).")
+                    return
 
-        tx = Transaction("register", {"pseudo": pseudo})
-        tx.sign(private_key)
+            private_key = Ed25519PrivateKey.generate()
 
-        self.seen_tx.add(tx.txid)
-        self.users[pseudo] = public_key
-        self.private_keys[pseudo] = private_key  # stocké localement seulement
+            tx = Transaction("register", {"pseudo": pseudo})
+            tx.sign(private_key)
 
-        self.blockchain.add_transaction(tx)
-        self.broadcast(tx)
+            self.seen_tx.add(tx.txid)
+            self.private_keys[pseudo] = private_key  # Sauvegarder localement
 
-        print(f"[LOCAL] Utilisateur '{pseudo}' enregistré.")
+            self.blockchain.add_transaction(tx)
+            self.broadcast(tx)
+
+            print(f"✅ Transaction d'enregistrement envoyée pour '{pseudo}'.")
+            print(f"⏳ En attente de validation par le minage...")
 
     def send_chat(self, pseudo, content):
-        if pseudo not in self.users:
-            print("Ce pseudo n'est pas enregistré.")
+        # Vérifier si on est synchronisé
+        if not self.synced:
+            print("⏳ Synchronisation en cours... Veuillez patienter.")
             return
 
-        private_key = self.private_keys[pseudo]
+        with self.lock:
+            if pseudo not in self.private_keys:
+                print("❌ Vous ne possédez pas ce pseudo localement.")
+                print("   Utilisez /register d'abord.")
+                return
+            
+            users = self.get_users()
+            if pseudo not in users:
+                print("❌ Ce pseudo n'est pas encore validé dans la blockchain.")
+                print("   Attendez que votre enregistrement soit miné.")
+                return
 
-        tx = Transaction("chat", {"sender": pseudo, "content": content})
-        tx.sign(private_key)
+            private_key = self.private_keys[pseudo]
 
-        self.seen_tx.add(tx.txid)
-        self.blockchain.add_transaction(tx)
-        self.broadcast(tx)
+            tx = Transaction("chat", {"sender": pseudo, "content": content})
+            tx.sign(private_key)
 
-        print(f"[YOU] {pseudo}: {content}")
+            self.seen_tx.add(tx.txid)
+            self.blockchain.add_transaction(tx)
+            self.broadcast(tx)
 
+            print(f"💬 {pseudo}: {content}")
 
     # ======================
     # START
@@ -466,75 +603,143 @@ class Node:
 # TERMINAL UI
 # ======================
 def repl(node: Node):
-    print("\n=== Terminal Blockchain Chat ===")
-    print("/register <pseudo>")
-    print("/msg <pseudo> <texte>")
-    print("/users")
-    print("/peers")
-    print("/blockchain")
-    print("/exit\n")
+    print("\n" + "="*50)
+    print("   🔗 BLOCKCHAIN CHAT P2P 🔗")
+    print("="*50)
+    print("\n⏳ Recherche de pairs sur le réseau...")
+    print("   (Patientez 5 secondes pour la synchronisation)\n")
+    
+    # Attendre la synchronisation initiale
+    for i in range(5):
+        time.sleep(1)
+        if node.synced:
+            break
+    
+    print("\nCommandes disponibles:")
+    print("  /register <pseudo>       - S'enregistrer")
+    print("  /msg <pseudo> <texte>    - Envoyer un message")
+    print("  /users                   - Liste des utilisateurs")
+    print("  /peers                   - Liste des pairs connectés")
+    print("  /chain                   - Afficher la blockchain")
+    print("  /mempool                 - Transactions en attente")
+    print("  /stats                   - Statistiques")
+    print("  /exit                    - Quitter")
+    print("\n" + "="*50 + "\n")
 
     while True:
-        cmd = input(">> ").strip()
+        try:
+            cmd = input(">> ").strip()
 
-        if cmd.startswith("/register "):
-            node.register_user(cmd.split(" ", 1)[1])
+            if not cmd:
+                continue
 
-        elif cmd.startswith("/msg "):
-            parts = cmd.split(" ", 2)
-            if len(parts) < 3:
-                print("Usage : /msg <pseudo> <texte>")
-            else:
-                node.send_chat(parts[1], parts[2])
-
-        elif cmd == "/users":
-            print("Utilisateurs :", list(node.users.keys()))
-
-        elif cmd == "/peers":
-            print("Pairs :", list(node.peers))
-
-        elif cmd == "/blockchain":
-            chain = node.blockchain.chain
-            print(f"\nBlockchain complète ({len(chain)} blocs) :\n")
-
-            for b in chain:
-                print("────────────────────────────────────────")
-                print(f"Bloc #{b.index}")
-                print(f"• Miner        : {b.miner_id}")
-                print(f"• Timestamp    : {b.timestamp}")
-                print(f"• Prev Hash    : {b.previous_hash}")
-                print(f"• Merkle Root  : {b.merkle_root}")
-                print(f"• Hash         : {b.current_hash}")
-                print(f"• Tx count     : {len(b.transactions)}")
-
-                if b.transactions:
-                    print("  Transactions :")
-                    for tx in b.transactions:
-                        print("   -----------------------")
-                        print(f"   - TXID  : {tx.txid}")
-                        print(f"   - Type  : {tx.tx_type}")
-                        print(f"   - Time  : {tx.timestamp}")
-
-                        if tx.tx_type == "register":
-                            print(f"   - User  : {tx.payload['pseudo']}")
-                            print(f"   - PubKey: {tx.payload['pubkey']}")
-
-                        elif tx.tx_type == "chat":
-                            print(f"   - From  : {tx.payload['sender']}")
-                            print(f"   - Msg   : {tx.payload['content']}")
-
-                        print(f"   - Signature : {tx.signature}")
+            if cmd.startswith("/register "):
+                parts = cmd.split(" ", 1)
+                if len(parts) == 2:
+                    node.register_user(parts[1])
                 else:
-                    print("  (Aucune transaction)")
+                    print("Usage : /register <pseudo>")
 
-                print("────────────────────────────────────────\n")
+            elif cmd.startswith("/msg "):
+                parts = cmd.split(" ", 2)
+                if len(parts) < 3:
+                    print("Usage : /msg <pseudo> <texte>")
+                else:
+                    node.send_chat(parts[1], parts[2])
 
-        elif cmd == "/exit":
-            print("Sortie…")
+            elif cmd == "/users":
+                with node.lock:
+                    users = node.get_users()
+                    if users:
+                        print(f"\n👥 Utilisateurs enregistrés ({len(users)}):")
+                        for pseudo in sorted(users.keys()):
+                            local = " 🔑" if pseudo in node.private_keys else ""
+                            print(f"  • {pseudo}{local}")
+                    else:
+                        print("Aucun utilisateur enregistré.")
+
+            elif cmd == "/peers":
+                with node.lock:
+                    if node.peers:
+                        print(f"\n🌐 Pairs connectés ({len(node.peers)}):")
+                        for ip, port in sorted(node.peers):
+                            print(f"  • {ip}:{port}")
+                    else:
+                        print("Aucun pair connecté.")
+
+            elif cmd == "/mempool":
+                with node.lock:
+                    if node.blockchain.mempool:
+                        print(f"\n⏳ Mempool ({len(node.blockchain.mempool)} transactions):")
+                        for tx in node.blockchain.mempool:
+                            if tx.tx_type == "register":
+                                print(f"  • REGISTER: {tx.payload['pseudo']}")
+                            elif tx.tx_type == "chat":
+                                print(f"  • CHAT: {tx.payload['sender']} → {tx.payload['content'][:30]}...")
+                    else:
+                        print("Mempool vide.")
+
+            elif cmd == "/stats":
+                with node.lock:
+                    users = node.get_users()
+                    sync_status = "✅ Synchronisé" if node.synced else "⏳ En cours..."
+                    print(f"\n📊 Statistiques:")
+                    print(f"  • Statut: {sync_status}")
+                    print(f"  • Blocs: {len(node.blockchain.chain)}")
+                    print(f"  • Mempool: {len(node.blockchain.mempool)} transactions")
+                    print(f"  • Utilisateurs: {len(users)}")
+                    print(f"  • Pairs: {len(node.peers)}")
+                    print(f"  • Pseudos locaux: {len(node.private_keys)}")
+
+            elif cmd == "/chain":
+                with node.lock:
+                    chain = node.blockchain.chain
+                    if not chain:
+                        print("La blockchain est vide.")
+                        continue
+
+                    print(f"\n{'='*60}")
+                    print(f"   BLOCKCHAIN ({len(chain)} blocs)")
+                    print(f"{'='*60}\n")
+
+                    for b in chain:
+                        print(f"┌─ Bloc #{b.index} " + "─"*45)
+                        print(f"│ Mineur      : {b.miner_id}")
+                        print(f"│ Timestamp   : {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(b.timestamp))}")
+                        print(f"│ Prev Hash   : {b.previous_hash[:16]}...")
+                        print(f"│ Merkle Root : {b.merkle_root[:16]}...")
+                        print(f"│ Hash        : {b.current_hash[:16]}...")
+                        print(f"│ Transactions: {len(b.transactions)}")
+
+                        if b.transactions:
+                            print("│")
+                            for i, tx in enumerate(b.transactions, 1):
+                                print(f"│  [{i}] {tx.tx_type.upper()}")
+                                print(f"│      TXID: {tx.txid[:16]}...")
+                                
+                                if tx.tx_type == "register":
+                                    print(f"│      User: {tx.payload['pseudo']}")
+                                elif tx.tx_type == "chat":
+                                    print(f"│      From: {tx.payload['sender']}")
+                                    print(f"│      Msg : {tx.payload['content']}")
+                                
+                                if i < len(b.transactions):
+                                    print("│")
+
+                        print(f"└{'─'*58}\n")
+
+            elif cmd == "/exit":
+                print("\n👋 Au revoir!")
+                break
+
+            else:
+                print("❌ Commande inconnue.")
+
+        except KeyboardInterrupt:
+            print("\n\n👋 Au revoir!")
             break
-
-        else:
-            print("Commande inconnue.")
+        except Exception as e:
+            print(f"Erreur: {e}")
 
 
 # ======================
@@ -543,4 +748,5 @@ def repl(node: Node):
 if __name__ == "__main__":
     node = Node()
     node.start()
+    time.sleep(0.5)  # Laisser le temps au serveur TCP de démarrer
     repl(node)
