@@ -23,6 +23,7 @@ from typing import List, Optional
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives import serialization
 
+MIN_TX_COUNT=3
 
 # ======================
 # CONFIG
@@ -133,6 +134,10 @@ class Blockchain:
             self.mempool.append(tx)
 
     def create_block(self, miner_id: str):
+        if len(self.mempool) < MIN_TX_COUNT:
+            # print(f"⚠️  Mempool contient seulement {len(self.mempool)} txs. Minage reporté.") # Optionnel
+            return None
+        
         if not self.mempool:
             return None
 
@@ -463,9 +468,9 @@ class Node:
     def auto_mine(self):
         while True:
             time.sleep(1)
-
             with self.lock:
-                if not self.blockchain.mempool or self.mining:
+                # NOUVEAU CODE : Vérifier la taille de la mempool ici
+                if len(self.blockchain.mempool) < MIN_TX_COUNT or self.mining:
                     continue
                 
                 self.mining = True
@@ -475,12 +480,13 @@ class Node:
             poet.begin_wait()
 
             with self.lock:
-                # Vérifier à nouveau si la mempool n'est pas vide
-                if not self.blockchain.mempool:
+                # Vérifier à nouveau la taille de la mempool et si un bloc n'a pas été miné par un pair pendant l'attente
+                if len(self.blockchain.mempool) < MIN_TX_COUNT or not self.mining:
                     self.mining = False
                     continue
-
+                    
                 block = self.blockchain.create_block(self.node_id)
+                # La vérification est déjà dans create_block, mais on vérifie le résultat
                 if block:
                     self.seen_blocks.add(block.current_hash)
                     self.blockchain.chain.append(block)
@@ -490,7 +496,6 @@ class Node:
                     self.save_chain()
                 
                 self.mining = False
-
     # ======================
     # PERSISTENCE
     # ======================
