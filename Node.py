@@ -134,9 +134,8 @@ class Blockchain:
             self.mempool.append(tx)
 
     def create_block(self, miner_id: str):
-        if len(self.mempool) < MIN_TX_COUNT:
-            # print(f"⚠️  Mempool contient seulement {len(self.mempool)} txs. Minage reporté.") # Optionnel
-            return None
+
+    
         
         if not self.mempool:
             return None
@@ -375,7 +374,7 @@ class Node:
             # Ajouter à la mempool
             self.blockchain.add_transaction(tx)
             self.broadcast(tx)
-            print(f"\n[REGISTER] Transaction d'enregistrement pour '{pseudo}' ajoutée à la mempool\n>> ", end="", flush=True)
+            # print(f"\n[REGISTER] Transaction d'enregistrement pour '{pseudo}' ajoutée à la mempool\n>> ", end="", flush=True) # SUPPRIMER CETTE LIGNE
             return
 
         if tx.tx_type == "chat":
@@ -390,10 +389,9 @@ class Node:
                 print("\n❌ Message rejeté : tentative d'usurpation détectée.\n>> ", end="", flush=True)
                 return
 
-            print(f"\n💬 {sender}: {tx.payload['content']}\n>> ", end="", flush=True)
+            #print(f"\n💬 {sender}: {tx.payload['content']}\n>> ", end="", flush=True)
             self.blockchain.add_transaction(tx)
             self.broadcast(tx)
-
     # ======================
     # BLOC
     # ======================
@@ -470,8 +468,8 @@ class Node:
             time.sleep(1)
             with self.lock:
                 # NOUVEAU CODE : Vérifier la taille de la mempool ici
-                if len(self.blockchain.mempool) < MIN_TX_COUNT or self.mining:
-                    continue
+                if len(self.blockchain.mempool) < MIN_TX_COUNT:
+                    continue    
                 
                 self.mining = True
 
