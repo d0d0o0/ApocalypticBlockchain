@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-class transaction(ABC):
+class Transaction(ABC):
     @property
     @abstractmethod
     def tx_id(self):
