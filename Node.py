@@ -1,12 +1,12 @@
 """
 blockchain_chat.py
-Version finale intégrée :
+Version ultime pour ton projet :
 - Découverte automatique via multicast
-- TCP P2P
-- Blockchain complète (Merkle, prev_hash, validation)
-- PoET automatique uniquement (pas de minage forcé)
-- Affichage du mineur (peer ou vous)
-- Anti-boucle (seen_tx / seen_blocks)
+- Réseau TCP P2P
+- Blockchain complète : blocs, merkle root, previous hash, validation
+- PoET automatique (pas de minage forcé)
+- Affichage du mineur du bloc (vous ou un pair)
+- Anti-boucle messages et blocs
 - Notifications uniquement pour les messages chat
 - Interface terminale
 """
@@ -20,31 +20,32 @@ import hashlib
 import random
 import uuid
 import os
-from typing import List, Tuple
+from typing import List
 
-# ----------------------------
-# Config
-# ----------------------------
+# ======================
+# CONFIG
+# ======================
 TCP_PORT = 5000
 MULTICAST_IP = "224.0.0.1"
 MULTICAST_PORT = 5001
-ANNOUNCE_INTERVAL = 2.0
-CHAIN_FILE = "blockchain_data.pkl"
+ANNOUNCE_INTERVAL = 2
+CHAIN_FILE = "blockchain.pickle"
 
-# ----------------------------
-# Utilitaires
-# ----------------------------
+
+# ======================
+# UTIL
+# ======================
 def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-# ----------------------------
-# Transaction
-# ----------------------------
+# ======================
+# TRANSACTION
+# ======================
 class Transaction:
     def __init__(self, tx_type: str, payload: dict):
         self.txid = str(uuid.uuid4())
-        self.tx_type = tx_type  # "register" ou "chat"
+        self.tx_type = tx_type          # "register" | "chat"
         self.payload = payload
         self.timestamp = int(time.time())
         self.signature = ""
@@ -53,32 +54,34 @@ class Transaction:
         self.signature = sha((self.txid + str(privkey)).encode())
 
     def verify_signature(self, key: str):
-        expected = sha((self.txid + str(key)).encode())
-        return expected == self.signature
+        return sha((self.txid + str(key)).encode()) == self.signature
 
 
-# ----------------------------
-# Merkle Tree
-# ----------------------------
+# ======================
+# MERKLE TREE
+# ======================
 class MerkleTree:
     @staticmethod
-    def compute_root(transactions: List['Transaction']) -> str:
-        hashes = [sha(tx.txid.encode()) for tx in transactions]
-        if not hashes:
+    def compute_root(transactions: List[Transaction]) -> str:
+        if not transactions:
             return sha(b'')
-        while len(hashes) > 1:
+
+        nodes = [sha(tx.txid.encode()) for tx in transactions]
+
+        while len(nodes) > 1:
             new = []
-            for i in range(0, len(hashes), 2):
-                left = hashes[i]
-                right = hashes[i+1] if i+1 < len(hashes) else hashes[i]
+            for i in range(0, len(nodes), 2):
+                left = nodes[i]
+                right = nodes[i+1] if i+1 < len(nodes) else left
                 new.append(sha((left + right).encode()))
-            hashes = new
-        return hashes[0]
+            nodes = new
+
+        return nodes[0]
 
 
-# ----------------------------
-# Block (miner_id ajouté)
-# ----------------------------
+# ======================
+# BLOCK
+# ======================
 class Block:
     def __init__(self, index: int, transactions: List[Transaction], previous_hash: str, miner_id: str):
         self.index = index
@@ -86,7 +89,7 @@ class Block:
         self.previous_hash = previous_hash
         self.timestamp = int(time.time())
         self.merkle_root = MerkleTree.compute_root(transactions)
-        self.miner_id = miner_id  # <-- AJOUTÉ
+        self.miner_id = miner_id
         self.nonce = 0
         self.current_hash = self.compute_hash()
 
@@ -102,9 +105,9 @@ class Block:
         return True
 
 
-# ----------------------------
-# Blockchain
-# ----------------------------
+# ======================
+# BLOCKCHAIN
+# ======================
 class Blockchain:
     def __init__(self):
         self.chain: List[Block] = []
@@ -117,18 +120,20 @@ class Blockchain:
     def create_block(self, miner_id: str):
         if not self.mempool:
             return None
+
         idx = len(self.chain)
         prev = self.chain[-1].current_hash if self.chain else "0"*64
         block = Block(idx, self.mempool.copy(), prev, miner_id)
+
         self.mempool.clear()
         self.chain.append(block)
         return block
 
     def validate_chain(self, chain: List[Block]):
-        for i, b in enumerate(chain):
-            if not b.validate():
+        for i, blk in enumerate(chain):
+            if not blk.validate():
                 return False
-            if i > 0 and b.previous_hash != chain[i-1].current_hash:
+            if i > 0 and blk.previous_hash != chain[i-1].current_hash:
                 return False
         return True
 
@@ -139,38 +144,38 @@ class Blockchain:
         return False
 
 
-# ----------------------------
-# PoET Timer
-# ----------------------------
+# ======================
+# PoET TIMER
+# ======================
 class PoETTimer:
     def __init__(self):
-        self.wait_time = random.uniform(2, 6)
+        self.wait = random.uniform(2, 6)
 
     def begin_wait(self):
-        time.sleep(self.wait_time)
+        time.sleep(self.wait)
 
 
-# ----------------------------
-# Node
-# ----------------------------
+# ======================
+# NODE
+# ======================
 class Node:
-    def __init__(self, tcp_port: int = TCP_PORT):
+    def __init__(self):
         self.host = self.get_local_ip()
-        self.tcp_port = tcp_port
-        self.node_id = f"{self.host}:{self.tcp_port}"  # <-- identifiant mineur
+        self.tcp_port = TCP_PORT
+        self.node_id = f"{self.host}:{self.tcp_port}"
 
         self.peers = set()
         self.blockchain = Blockchain()
-        self.users = {}  # pseudo -> pubkey
+        self.users = {}  # pseudo -> key
 
-        self.seen_txids = set()
-        self.seen_block_hashes = set()
+        self.seen_tx = set()
+        self.seen_blocks = set()
 
         self.lock = threading.RLock()
 
         self.load_chain()
 
-    # ---- IP locale
+    # -------------------
     @staticmethod
     def get_local_ip():
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -182,30 +187,32 @@ class Node:
         s.close()
         return ip
 
-    # ---------------- TCP ----------------
+    # ======================
+    # TCP SERVER
+    # ======================
     def tcp_server(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind((self.host, self.tcp_port))
-        sock.listen(10)
-        print(f"[TCP] Serveur sur {self.node_id}")
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind((self.host, self.tcp_port))
+        s.listen(10)
+        print(f"[TCP] Serveur actif sur {self.node_id}")
 
         while True:
-            client, addr = sock.accept()
-            threading.Thread(target=self.handle_tcp_client, args=(client,), daemon=True).start()
+            c, addr = s.accept()
+            threading.Thread(target=self.handle_client, args=(c,), daemon=True).start()
 
-    def handle_tcp_client(self, client):
+    def handle_client(self, client):
         try:
             data = b''
             while True:
-                part = client.recv(65536)
-                if not part:
+                p = client.recv(65536)
+                if not p:
                     break
-                data += part
+                data += p
             if not data:
                 return
             obj = pickle.loads(data)
             with self.lock:
-                self.process_incoming(obj)
+                self.receive_object(obj)
         finally:
             client.close()
 
@@ -218,63 +225,69 @@ class Node:
         except:
             pass
 
-    # ---------------- Multicast ----------------
+    # ======================
+    # MULTICAST
+    # ======================
     def multicast_listener(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(('', MULTICAST_PORT))
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(('', MULTICAST_PORT))
 
         mreq = struct.pack("4sl", socket.inet_aton(MULTICAST_IP), socket.INADDR_ANY)
-        sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+        s.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
         while True:
             try:
-                data, addr = sock.recvfrom(1024)
+                data, addr = s.recvfrom(1024)
                 msg = data.decode()
                 if ":" in msg:
                     ip, port = msg.split(":")
                     peer = (ip, int(port))
-                    if peer != (self.host, self.tcp_port):
-                        if peer not in self.peers:
-                            self.peers.add(peer)
-                            self.send_tcp(peer, ("CHAIN_REQUEST", (self.host, self.tcp_port)))
+                    if peer != (self.host, self.tcp_port) and peer not in self.peers:
+                        self.peers.add(peer)
+                        self.send_tcp(peer, ("CHAIN_REQUEST", (self.host, self.tcp_port)))
             except:
                 pass
 
     def multicast_announcer(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        ttl = struct.pack('b', 1)
-        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        ttl = struct.pack("b", 1)
+        s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
 
         msg = f"{self.host}:{self.tcp_port}".encode()
 
         while True:
-            sock.sendto(msg, (MULTICAST_IP, MULTICAST_PORT))
+            s.sendto(msg, (MULTICAST_IP, MULTICAST_PORT))
             time.sleep(ANNOUNCE_INTERVAL)
 
-    # ---------------- RX objects ----------------
-    def process_incoming(self, obj):
+    # ======================
+    # RECEPTION OBJETS
+    # ======================
+    def receive_object(self, obj):
         if isinstance(obj, Transaction):
-            self.handle_transaction(obj)
+            self.handle_tx(obj)
+
         elif isinstance(obj, Block):
             self.handle_block(obj)
+
         elif isinstance(obj, tuple):
-            t, data = obj
-            if t == "CHAIN_REQUEST":
+            act, data = obj
+            if act == "CHAIN_REQUEST":
                 requester = data
                 self.send_tcp(requester, ("CHAIN_RESPONSE", self.blockchain.chain))
-            elif t == "CHAIN_RESPONSE":
+            elif act == "CHAIN_RESPONSE":
                 self.handle_chain_response(data)
 
-    # ---------------- Transactions ----------------
-    def handle_transaction(self, tx):
-        # anti boucle
-        if tx.txid in self.seen_txids:
+    # ======================
+    # TRANSACTIONS
+    # ======================
+    def handle_tx(self, tx):
+        if tx.txid in self.seen_tx:
             return
 
-        self.seen_txids.add(tx.txid)
+        self.seen_tx.add(tx.txid)
 
-        # --- Register ---
+        # register
         if tx.tx_type == "register":
             pseudo = tx.payload["pseudo"]
             pubkey = tx.payload["pubkey"]
@@ -283,74 +296,72 @@ class Node:
             self.broadcast(tx)
             return
 
-        # --- Chat message ---
+        # chat
         if tx.tx_type == "chat":
             sender = tx.payload["sender"]
             content = tx.payload["content"]
-
             if sender in self.users:
                 print(f"\n🔔 Nouveau message reçu de {sender} : {content}\n>> ", end="")
                 self.blockchain.add_transaction(tx)
                 self.broadcast(tx)
 
-    # ---------------- Bloc ----------------
-    def handle_block(self, block: Block):
-        if block.current_hash in self.seen_block_hashes:
+    # ======================
+    # BLOC
+    # ======================
+    def handle_block(self, block):
+        if block.current_hash in self.seen_blocks:
             return
 
         if not block.validate():
             return
 
-        # chaînage correct ?
         if block.index == len(self.blockchain.chain):
-            # bloc attendu
-            self.seen_block_hashes.add(block.current_hash)
+            self.seen_blocks.add(block.current_hash)
             self.blockchain.chain.append(block)
 
-            # AFFICHAGE DU MINEUR
-            print(f"\n⛏️ Bloc reçu (miner={block.miner_id}) : idx={block.index}, txs={len(block.transactions)}\n>> ", end="")
+            print(f"\n⛏️ Bloc reçu miné par {block.miner_id} : idx={block.index}, txs={len(block.transactions)}\n>> ", end="")
 
             self.broadcast(block)
             self.save_chain()
-        else:
-            # On attend une synchro (les nodes demanderont la chaîne)
-            pass
 
-    # ---------------- Chain response ----------------
     def handle_chain_response(self, chain):
         if self.blockchain.replace_if_longer(chain):
-            self.seen_block_hashes = {b.current_hash for b in chain}
-            print(f"\n[SYNC] Chaîne mise à jour (longueur={len(chain)})\n>> ", end="")
+            self.seen_blocks = {b.current_hash for b in chain}
+            print(f"\n[SYNC] Blockchain mise à jour ({len(chain)} blocs)\n>> ", end="")
             self.save_chain()
 
-    # ---------------- Diffusion ----------------
+    # ======================
+    # DIFFUSION
+    # ======================
     def broadcast(self, obj):
-        for peer in list(self.peers):
-            threading.Thread(target=self.send_tcp, args=(peer, obj), daemon=True).start()
+        for p in list(self.peers):
+            threading.Thread(target=self.send_tcp, args=(p, obj), daemon=True).start()
 
-    # ---------------- Mining automatique (PoET) ----------------
+    # ======================
+    # MINAGE AUTOMATIQUE
+    # ======================
     def auto_mine(self):
         while True:
             time.sleep(1)
-            with self.lock:
-                if not self.blockchain.mempool:
-                    continue
 
-            # attente PoET
+            if not self.blockchain.mempool:
+                continue
+
             poet = PoETTimer()
             poet.begin_wait()
 
             with self.lock:
                 block = self.blockchain.create_block(self.node_id)
                 if block:
-                    self.seen_block_hashes.add(block.current_hash)
+                    self.seen_blocks.add(block.current_hash)
 
                     print(f"\n⛏️ Bloc miné par VOUS ({self.node_id}) : idx={block.index}, txs={len(block.transactions)}\n>> ", end="")
-
                     self.broadcast(block)
                     self.save_chain()
 
-    # ---------------- Persistence ----------------
+    # ======================
+    # PERSISTENCE
+    # ======================
     def save_chain(self):
         try:
             with open(CHAIN_FILE, "wb") as f:
@@ -363,38 +374,47 @@ class Node:
             try:
                 with open(CHAIN_FILE, "rb") as f:
                     chain = pickle.load(f)
-                    if self.blockchain.validate_chain(chain):
-                        self.blockchain.chain = chain
-                        self.seen_block_hashes = {b.current_hash for b in chain}
-                        print(f"[LOAD] Blockchain chargée : {len(chain)} blocs")
+                if self.blockchain.validate_chain(chain):
+                    self.blockchain.chain = chain
+                    self.seen_blocks = {b.current_hash for b in chain}
+                    print(f"[LOAD] Blockchain chargée ({len(chain)} blocs)")
             except:
                 pass
 
-    # ---------------- User actions ----------------
+    # ======================
+    # ACTIONS USER
+    # ======================
     def register_user(self, pseudo):
         priv = random.randint(100000, 999999)
         pub = priv
+
         tx = Transaction("register", {"pseudo": pseudo, "pubkey": pub})
         tx.sign(priv)
 
-        self.seen_txids.add(tx.txid)
+        self.seen_tx.add(tx.txid)
         self.users[pseudo] = pub
         self.blockchain.add_transaction(tx)
         self.broadcast(tx)
+
         print(f"[LOCAL] Utilisateur '{pseudo}' enregistré.")
 
     def send_chat(self, pseudo, content):
         if pseudo not in self.users:
-            print("Pseudo inconnu.")
+            print("Ce pseudo n'est pas enregistré.")
             return
+
         tx = Transaction("chat", {"sender": pseudo, "content": content})
         tx.sign(self.users[pseudo])
-        self.seen_txids.add(tx.txid)
+
+        self.seen_tx.add(tx.txid)
         self.blockchain.add_transaction(tx)
         self.broadcast(tx)
+
         print(f"[YOU] {pseudo}: {content}")
 
-    # ---------------- Start ----------------
+    # ======================
+    # START
+    # ======================
     def start(self):
         threading.Thread(target=self.tcp_server, daemon=True).start()
         threading.Thread(target=self.multicast_listener, daemon=True).start()
@@ -402,12 +422,11 @@ class Node:
         threading.Thread(target=self.auto_mine, daemon=True).start()
 
 
-# ----------------------------
-# Interface terminale
-# ----------------------------
+# ======================
+# TERMINAL UI
+# ======================
 def repl(node: Node):
-    print("\n=== Terminal Node ===\n")
-    print("Commandes :")
+    print("\n=== Terminal Blockchain Chat ===")
     print("/register <pseudo>")
     print("/msg <pseudo> <texte>")
     print("/users")
@@ -417,20 +436,16 @@ def repl(node: Node):
 
     while True:
         cmd = input(">> ").strip()
-        if not cmd:
-            continue
 
         if cmd.startswith("/register "):
-            _, pseudo = cmd.split(maxsplit=1)
-            node.register_user(pseudo)
+            node.register_user(cmd.split(" ", 1)[1])
 
         elif cmd.startswith("/msg "):
-            parts = cmd.split(maxsplit=2)
+            parts = cmd.split(" ", 2)
             if len(parts) < 3:
-                print("Usage: /msg <pseudo> <texte>")
-                continue
-            _, pseudo, text = parts
-            node.send_chat(pseudo, text)
+                print("Usage : /msg <pseudo> <texte>")
+            else:
+                node.send_chat(parts[1], parts[2])
 
         elif cmd == "/users":
             print("Utilisateurs :", list(node.users.keys()))
@@ -439,20 +454,52 @@ def repl(node: Node):
             print("Pairs :", list(node.peers))
 
         elif cmd == "/blockchain":
-            for b in node.blockchain.chain:
-                print(f" - idx={b.index}, miner={b.miner_id}, txs={len(b.transactions)}")
+            chain = node.blockchain.chain
+            print(f"\nBlockchain complète ({len(chain)} blocs) :\n")
+
+            for b in chain:
+                print("────────────────────────────────────────")
+                print(f"Bloc #{b.index}")
+                print(f"• Miner        : {b.miner_id}")
+                print(f"• Timestamp    : {b.timestamp}")
+                print(f"• Prev Hash    : {b.previous_hash}")
+                print(f"• Merkle Root  : {b.merkle_root}")
+                print(f"• Hash         : {b.current_hash}")
+                print(f"• Tx count     : {len(b.transactions)}")
+
+                if b.transactions:
+                    print("  Transactions :")
+                    for tx in b.transactions:
+                        print("   -----------------------")
+                        print(f"   - TXID  : {tx.txid}")
+                        print(f"   - Type  : {tx.tx_type}")
+                        print(f"   - Time  : {tx.timestamp}")
+
+                        if tx.tx_type == "register":
+                            print(f"   - User  : {tx.payload['pseudo']}")
+                            print(f"   - PubKey: {tx.payload['pubkey']}")
+
+                        elif tx.tx_type == "chat":
+                            print(f"   - From  : {tx.payload['sender']}")
+                            print(f"   - Msg   : {tx.payload['content']}")
+
+                        print(f"   - Signature : {tx.signature}")
+                else:
+                    print("  (Aucune transaction)")
+
+                print("────────────────────────────────────────\n")
 
         elif cmd == "/exit":
             print("Sortie…")
             break
 
         else:
-            print("Commande invalide.")
+            print("Commande inconnue.")
 
 
-# ----------------------------
+# ======================
 # MAIN
-# ----------------------------
+# ======================
 if __name__ == "__main__":
     node = Node()
     node.start()
