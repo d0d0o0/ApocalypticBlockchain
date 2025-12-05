@@ -98,8 +98,13 @@
         <mxCell id="Blockchain_attr2" parent="Blockchain" value="- mempool: Seq[Transaction]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
           <mxGeometry x="0" y="52" width="220" height="26" as="geometry"/>
         </mxCell>
+<<<<<<< HEAD
         <mxCell id="Blockchain_method1" parent="Blockchain" value="+ add_transaction(tx:Transaction): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
           <mxGeometry x="0" y="78" width="220" height="26" as="geometry"/>
+=======
+        <mxCell id="86BGPLdKwfEFT9ngi1js-48" parent="1" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=none;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" value="Block" vertex="1">
+          <mxGeometry height="246" width="190" x="60" y="240" as="geometry" />
+>>>>>>> 85fce01c3a7b78e2764c90c5b3047adfe6ad1d06
         </mxCell>
         <mxCell id="Blockchain_method2" parent="Blockchain" value="+ create_block(): Block" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
           <mxGeometry x="0" y="104" width="220" height="26" as="geometry"/>
@@ -126,8 +131,13 @@
         <mxCell id="Node_attr3" parent="Node" value="- public_key: bytes" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
           <mxGeometry x="0" y="78" width="200" height="26" as="geometry"/>
         </mxCell>
+<<<<<<< HEAD
         <mxCell id="Node_attr4" parent="Node" value="- blockchain: Blockchain" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
           <mxGeometry x="0" y="104" width="200" height="26" as="geometry"/>
+=======
+        <mxCell id="86BGPLdKwfEFT9ngi1js-60" parent="86BGPLdKwfEFT9ngi1js-48" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="- currentHash : string" vertex="1">
+          <mxGeometry height="32" width="190" y="214" as="geometry" />
+>>>>>>> 85fce01c3a7b78e2764c90c5b3047adfe6ad1d06
         </mxCell>
         <mxCell id="Node_method1" parent="Node" value="+ broadcast_transaction(tx:Transaction): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
           <mxGeometry x="0" y="130" width="200" height="26" as="geometry"/>
