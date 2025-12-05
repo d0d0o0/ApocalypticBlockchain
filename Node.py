@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 blockchain_chat.py
 Version finale intégrée :
