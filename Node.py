@@ -21,6 +21,9 @@ import random
 import uuid
 import os
 from typing import List
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
+from cryptography.hazmat.primitives import serialization
+
 
 # ======================
 # CONFIG
@@ -45,16 +48,29 @@ def sha(data: bytes) -> str:
 class Transaction:
     def __init__(self, tx_type: str, payload: dict):
         self.txid = str(uuid.uuid4())
-        self.tx_type = tx_type          # "register" | "chat"
+        self.tx_type = tx_type
         self.payload = payload
         self.timestamp = int(time.time())
-        self.signature = ""
+        self.signature = None
+        self.pubkey = None  # clé publique incluse dans la transaction
 
-    def sign(self, privkey: str):
-        self.signature = sha((self.txid + str(privkey)).encode())
+    def sign(self, private_key: Ed25519PrivateKey):
+        self.pubkey = private_key.public_key().public_bytes(
+            serialization.Encoding.Raw,
+            serialization.PublicFormat.Raw
+        )
+        message = (self.txid + str(self.payload) + str(self.timestamp)).encode()
+        self.signature = private_key.sign(message)
 
-    def verify_signature(self, key: str):
-        return sha((self.txid + str(key)).encode()) == self.signature
+    def verify_signature(self):
+        try:
+            pub = Ed25519PublicKey.from_public_bytes(self.pubkey)
+            message = (self.txid + str(self.payload) + str(self.timestamp)).encode()
+            pub.verify(self.signature, message)
+            return True
+        except Exception:
+            return False
+
 
 
 # ======================
@@ -172,7 +188,7 @@ class Node:
         self.seen_blocks = set()
 
         self.lock = threading.RLock()
-
+        self.private_keys = {}
         self.load_chain()
 
     # -------------------
@@ -285,25 +301,37 @@ class Node:
         if tx.txid in self.seen_tx:
             return
 
+        if not tx.verify_signature():
+            print("❌ Transaction rejetée : signature invalide.")
+            return
+
         self.seen_tx.add(tx.txid)
 
-        # register
         if tx.tx_type == "register":
             pseudo = tx.payload["pseudo"]
-            pubkey = tx.payload["pubkey"]
-            self.users[pseudo] = pubkey
+
+            if pseudo in self.users:
+                return  # impossible d’écraser une identité
+
+            self.users[pseudo] = tx.pubkey
             self.blockchain.add_transaction(tx)
             self.broadcast(tx)
             return
 
-        # chat
         if tx.tx_type == "chat":
             sender = tx.payload["sender"]
-            content = tx.payload["content"]
-            if sender in self.users:
-                print(f"\n🔔 Nouveau message reçu de {sender} : {content}\n>> ", end="")
-                self.blockchain.add_transaction(tx)
-                self.broadcast(tx)
+
+            if sender not in self.users:
+                print("❌ Message rejeté : l'utilisateur n'existe pas.")
+                return
+
+            if tx.pubkey != self.users[sender]:
+                print("❌ Message rejeté : tentative d’usurpation détectée.")
+                return
+
+            print(f"\n🔔 Nouveau message de {sender}: {tx.payload['content']}\n>> ", end="")
+            self.blockchain.add_transaction(tx)
+            self.broadcast(tx)
 
     # ======================
     # BLOC
@@ -385,14 +413,23 @@ class Node:
     # ACTIONS USER
     # ======================
     def register_user(self, pseudo):
-        priv = random.randint(100000, 999999)
-        pub = priv
+        if pseudo in self.users:
+            print("Ce pseudo est déjà enregistré.")
+            return
 
-        tx = Transaction("register", {"pseudo": pseudo, "pubkey": pub})
-        tx.sign(priv)
+        private_key = Ed25519PrivateKey.generate()
+        public_key = private_key.public_key().public_bytes(
+            serialization.Encoding.Raw,
+            serialization.PublicFormat.Raw
+        )
+
+        tx = Transaction("register", {"pseudo": pseudo})
+        tx.sign(private_key)
 
         self.seen_tx.add(tx.txid)
-        self.users[pseudo] = pub
+        self.users[pseudo] = public_key
+        self.private_keys[pseudo] = private_key  # stocké localement seulement
+
         self.blockchain.add_transaction(tx)
         self.broadcast(tx)
 
@@ -403,14 +440,17 @@ class Node:
             print("Ce pseudo n'est pas enregistré.")
             return
 
+        private_key = self.private_keys[pseudo]
+
         tx = Transaction("chat", {"sender": pseudo, "content": content})
-        tx.sign(self.users[pseudo])
+        tx.sign(private_key)
 
         self.seen_tx.add(tx.txid)
         self.blockchain.add_transaction(tx)
         self.broadcast(tx)
 
         print(f"[YOU] {pseudo}: {content}")
+
 
     # ======================
     # START
