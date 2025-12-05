@@ -1,183 +1,157 @@
-<mxfile host="app.diagrams.net" agent="Mozilla/5.0" version="29.2.4">
-  <diagram name="UML Blockchain MAX" id="UML_Max">
-    <mxGraphModel dx="1600" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1600" math="0" shadow="0">
-      <root>
-        <mxCell id="0"/>
-        <mxCell id="1" parent="0"/>
-
-        <!-- USER -->
-        <mxCell id="User" value="User" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="40" y="40" width="180" height="120" as="geometry"/>
-        </mxCell>
-        <mxCell id="User_attr1" parent="User" value="- pubkey: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="26" width="180" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="User_attr2" parent="User" value="- privkey: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="52" width="180" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="User_method1" parent="User" value="+ getPseudo(): string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="78" width="180" height="26" as="geometry"/>
-        </mxCell>
-
-        <!-- TRANSACTION -->
-        <mxCell id="Transaction" value="Transaction" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="260" y="40" width="200" height="140" as="geometry"/>
-        </mxCell>
-        <mxCell id="Transaction_attr1" parent="Transaction" value="- tx_id: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="26" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Transaction_attr2" parent="Transaction" value="- timestamp: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="52" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Transaction_attr3" parent="Transaction" value="- signature: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="78" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Transaction_method1" parent="Transaction" value="+ sign(privkey:int): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="104" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Transaction_method2" parent="Transaction" value="+ checkTransaction(): bool" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="130" width="200" height="26" as="geometry"/>
-        </mxCell>
-
-        <!-- USERREGISTER -->
-        <mxCell id="UserRegister" value="UserRegister" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="480" y="40" width="180" height="100" as="geometry"/>
-        </mxCell>
-        <mxCell id="UserRegister_attr1" parent="UserRegister" value="- pseudo: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="26" width="180" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="UserRegister_attr2" parent="UserRegister" value="- pubkey: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="52" width="180" height="26" as="geometry"/>
-        </mxCell>
-        <!-- EXTENDS UserRegister -> Transaction -->
-        <mxCell id="edgeUserReg" edge="1" parent="1" source="UserRegister" target="Transaction" style="endArrow=block;endFill=0;" value="Extends">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-
-        <!-- CHATMESSAGE -->
-        <mxCell id="ChatMessage" value="ChatMessage" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="480" y="160" width="180" height="120" as="geometry"/>
-        </mxCell>
-        <mxCell id="ChatMessage_attr1" parent="ChatMessage" value="- sender_pseudo: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="26" width="180" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="ChatMessage_attr2" parent="ChatMessage" value="- content: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="52" width="180" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="ChatMessage_attr3" parent="ChatMessage" value="- timestamp: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="78" width="180" height="26" as="geometry"/>
-        </mxCell>
-        <!-- EXTENDS ChatMessage -> Transaction -->
-        <mxCell id="edgeChatMsg" edge="1" parent="1" source="ChatMessage" target="Transaction" style="endArrow=block;endFill=0;" value="Extends">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-
-        <!-- MERKLETREE -->
-        <mxCell id="MerkleTree" value="MerkleTree" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="40" y="300" width="180" height="120" as="geometry"/>
-        </mxCell>
-        <mxCell id="MerkleTree_attr1" parent="MerkleTree" value="- leaves: Seq[bytes]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="26" width="180" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="MerkleTree_attr2" parent="MerkleTree" value="- root: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="52" width="180" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="MerkleTree_method1" parent="MerkleTree" value="+ compute_root(): string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="78" width="180" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="MerkleTree_method2" parent="MerkleTree" value="+ hash_pair(a,b): string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="104" width="180" height="26" as="geometry"/>
-        </mxCell>
-        <!-- BLOCKCHAIN -->
-        <mxCell id="Blockchain" value="Blockchain" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="520" y="300" width="220" height="180" as="geometry"/>
-        </mxCell>
-        <mxCell id="Blockchain_attr1" parent="Blockchain" value="- chain: Seq[Block]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="26" width="220" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Blockchain_attr2" parent="Blockchain" value="- mempool: Seq[Transaction]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="52" width="220" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Blockchain_method1" parent="Blockchain" value="+ add_transaction(tx:Transaction): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="78" width="220" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Blockchain_method2" parent="Blockchain" value="+ create_block(): Block" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="104" width="220" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Blockchain_method3" parent="Blockchain" value="+ validate_block(block:Block): bool" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="130" width="220" height="26" as="geometry"/>
-        </mxCell>
-
-        <!-- COMPOSITION Blockchain -> Block -->
-        <mxCell id="edgeBCBlock" edge="1" parent="1" source="Blockchain" target="Block" style="startArrow=diamond;startFill=1;endArrow=open;" value="Composition">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-
-        <!-- NODE -->
-        <mxCell id="Node" value="Node" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="760" y="40" width="200" height="240" as="geometry"/>
-        </mxCell>
-        <mxCell id="Node_attr1" parent="Node" value="- node_id: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="26" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Node_attr2" parent="Node" value="- private_key: bytes" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="52" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Node_attr3" parent="Node" value="- public_key: bytes" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="78" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Node_attr4" parent="Node" value="- blockchain: Blockchain" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="104" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Node_method1" parent="Node" value="+ broadcast_transaction(tx:Transaction): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="130" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Node_method2" parent="Node" value="+ receive_transaction(tx:Transaction): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="156" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Node_method3" parent="Node" value="+ broadcast_block(block:Block): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="182" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Node_method4" parent="Node" value="+ receive_block(block:Block): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="208" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="Node_method5" parent="Node" value="+ synchronize(): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="234" width="200" height="26" as="geometry"/>
-        </mxCell>
-
-        <!-- ASSOCIATION Node -> Blockchain -->
-        <mxCell id="edgeNodeBC" edge="1" parent="1" source="Node" target="Blockchain" style="endArrow=open;endFill=1;" value="has">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-
-        <!-- BIDIRECTIONAL PEERS (Node <-> Node) -->
-        <mxCell id="edgeNodePeer" edge="1" parent="1" source="Node" target="Node" style="endArrow=open;curved=1;" value="peers">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-
-        <!-- POET TIMER -->
-        <mxCell id="PoETTimer" value="PoETTimer" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="1000" y="40" width="200" height="120" as="geometry"/>
-        </mxCell>
-        <mxCell id="PoETTimer_attr1" parent="PoETTimer" value="- wait_time: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="26" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="PoETTimer_attr2" parent="PoETTimer" value="- nonce: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="52" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="PoETTimer_method1" parent="PoETTimer" value="+ begin_wait(): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="78" width="200" height="26" as="geometry"/>
-        </mxCell>
-        <mxCell id="PoETTimer_method2" parent="PoETTimer" value="+ reveal_proof(): dict" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" vertex="1">
-          <mxGeometry x="0" y="104" width="200" height="26" as="geometry"/>
-        </mxCell>
-
-        <!-- ASSOCIATION Node -> PoETTimer -->
-        <mxCell id="edgeNodePoET" edge="1" parent="1" source="Node" target="PoETTimer" style="endArrow=open;endFill=1;" value="has">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-
-      </root>
-    </mxGraphModel>
-  </diagram>
+<mxfile host="65bd71144e">
+    <diagram name="UML Blockchain MAX" id="UML_Max">
+        <mxGraphModel dx="622" dy="399" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1600" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="User" value="User" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="40" width="180" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="User_attr1" value="- pubkey: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="User" vertex="1">
+                    <mxGeometry y="26" width="180" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="User_attr2" value="- privkey: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="User" vertex="1">
+                    <mxGeometry y="52" width="180" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="User_method1" value="+ getPseudo(): string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="User" vertex="1">
+                    <mxGeometry y="78" width="180" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Transaction" value="Transaction" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="260" y="40" width="200" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="Transaction_attr1" value="- tx_id: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Transaction" vertex="1">
+                    <mxGeometry y="26" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Transaction_attr2" value="- timestamp: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Transaction" vertex="1">
+                    <mxGeometry y="52" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Transaction_attr3" value="- signature: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Transaction" vertex="1">
+                    <mxGeometry y="78" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Transaction_method1" value="+ sign(privkey:int): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Transaction" vertex="1">
+                    <mxGeometry y="104" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Transaction_method2" value="+ checkTransaction(): bool" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Transaction" vertex="1">
+                    <mxGeometry y="130" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="UserRegister" value="UserRegister" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="480" y="40" width="180" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="UserRegister_attr1" value="- pseudo: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="UserRegister" vertex="1">
+                    <mxGeometry y="26" width="180" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="UserRegister_attr2" value="- pubkey: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="UserRegister" vertex="1">
+                    <mxGeometry y="52" width="180" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="edgeUserReg" value="Extends" style="endArrow=block;endFill=0;" parent="1" source="UserRegister" target="Transaction" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ChatMessage" value="ChatMessage" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="480" y="160" width="180" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="ChatMessage_attr1" value="- sender_pseudo: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="ChatMessage" vertex="1">
+                    <mxGeometry y="26" width="180" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="ChatMessage_attr2" value="- content: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="ChatMessage" vertex="1">
+                    <mxGeometry y="52" width="180" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="ChatMessage_attr3" value="- timestamp: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="ChatMessage" vertex="1">
+                    <mxGeometry y="78" width="180" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="edgeChatMsg" value="Extends" style="endArrow=block;endFill=0;" parent="1" source="ChatMessage" target="Transaction" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="MerkleTree" value="MerkleTree" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="300" width="180" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="MerkleTree_attr1" value="- leaves: Seq[bytes]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="MerkleTree" vertex="1">
+                    <mxGeometry y="26" width="180" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="MerkleTree_attr2" value="- root: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="MerkleTree" vertex="1">
+                    <mxGeometry y="52" width="180" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="MerkleTree_method1" value="+ compute_root(): string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="MerkleTree" vertex="1">
+                    <mxGeometry y="78" width="180" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="MerkleTree_method2" value="+ hash_pair(a,b): string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="MerkleTree" vertex="1">
+                    <mxGeometry y="104" width="180" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Blockchain" value="Blockchain" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="520" y="300" width="220" height="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="Blockchain_attr1" value="- chain: Seq[Block]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Blockchain" vertex="1">
+                    <mxGeometry y="26" width="220" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Blockchain_attr2" value="- mempool: Seq[Transaction]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Blockchain" vertex="1">
+                    <mxGeometry y="52" width="220" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Blockchain_method1" value="+ add_transaction(tx:Transaction): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Blockchain" vertex="1">
+                    <mxGeometry y="78" width="220" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Blockchain_method2" value="+ create_block(): Block" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Blockchain" vertex="1">
+                    <mxGeometry y="104" width="220" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Blockchain_method3" value="+ validate_block(block:Block): bool" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Blockchain" vertex="1">
+                    <mxGeometry y="130" width="220" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="edgeBCBlock" value="Composition" style="startArrow=diamond;startFill=1;endArrow=open;" parent="1" source="Blockchain" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="Node" value="Node" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="760" y="40" width="200" height="240" as="geometry"/>
+                </mxCell>
+                <mxCell id="Node_attr1" value="- node_id: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Node" vertex="1">
+                    <mxGeometry y="26" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Node_attr2" value="- private_key: bytes" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Node" vertex="1">
+                    <mxGeometry y="52" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Node_attr3" value="- public_key: bytes" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Node" vertex="1">
+                    <mxGeometry y="78" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Node_attr4" value="- blockchain: Blockchain" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Node" vertex="1">
+                    <mxGeometry y="104" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Node_method1" value="+ broadcast_transaction(tx:Transaction): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Node" vertex="1">
+                    <mxGeometry y="130" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Node_method2" value="+ receive_transaction(tx:Transaction): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Node" vertex="1">
+                    <mxGeometry y="156" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Node_method3" value="+ broadcast_block(block:Block): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Node" vertex="1">
+                    <mxGeometry y="182" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Node_method4" value="+ receive_block(block:Block): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Node" vertex="1">
+                    <mxGeometry y="208" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="Node_method5" value="+ synchronize(): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="Node" vertex="1">
+                    <mxGeometry y="234" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="edgeNodeBC" value="has" style="endArrow=open;endFill=1;" parent="1" source="Node" target="Blockchain" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="edgeNodePeer" value="peers" style="endArrow=open;curved=1;" parent="1" source="Node" target="Node" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="PoETTimer" value="PoETTimer" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;resizeParent=1;collapsible=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1000" y="40" width="200" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="PoETTimer_attr1" value="- wait_time: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="PoETTimer" vertex="1">
+                    <mxGeometry y="26" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="PoETTimer_attr2" value="- nonce: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="PoETTimer" vertex="1">
+                    <mxGeometry y="52" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="PoETTimer_method1" value="+ begin_wait(): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="PoETTimer" vertex="1">
+                    <mxGeometry y="78" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="PoETTimer_method2" value="+ reveal_proof(): dict" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;whiteSpace=wrap;html=1;" parent="PoETTimer" vertex="1">
+                    <mxGeometry y="104" width="200" height="26" as="geometry"/>
+                </mxCell>
+                <mxCell id="edgeNodePoET" value="has" style="endArrow=open;endFill=1;" parent="1" source="Node" target="PoETTimer" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
 </mxfile>
